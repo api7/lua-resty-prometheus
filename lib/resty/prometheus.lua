@@ -105,7 +105,8 @@ local Counter = Metric:new()
 --   value: (number) a value to add to the counter. Defaults to 1 if skipped.
 --   label_values: an array of label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Counter:inc(value, label_values)
+function Counter:inc(value, ...)
+  local label_values = init_tmp_tab(...)
   local err = self:check_label_values(label_values)
   if err ~= nil then
     self.prometheus:log_error(err)
@@ -125,7 +126,8 @@ end
 -- Args:
 --   label_values: an array of label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Counter:del(label_values)
+function Counter:del(...)
+  local label_values = init_tmp_tab(...)
   local err = self:check_label_values(label_values)
   if err ~= nil then
     self.prometheus:log_error(err)

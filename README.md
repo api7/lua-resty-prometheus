@@ -133,13 +133,13 @@ Returns a `counter` object that can later be incremented.
 
 Example:
 ```
-init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+init_by_lua_block {
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
   metric_bytes = prometheus:counter(
     "nginx_http_request_size_bytes", "Total size of incoming requests")
   metric_requests = prometheus:counter(
     "nginx_http_requests_total", "Number of HTTP requests", {"host", "status"})
-';
+}
 ```
 
 ### prometheus:gauge()
@@ -222,14 +222,14 @@ Returns metric data as an array of strings.
 
 ### counter:inc()
 
-**syntax:** counter:inc(*value*, *label_values*)
+**syntax:** counter:inc(*value*, ...)
 
 Increments a previously registered counter. This is usually called from
 [log_by_lua](https://github.com/openresty/lua-nginx-module#log_by_lua)
 globally or per server/location.
 
 * `value` is a value that should be added to the counter. Defaults to 1.
-* `label_values` is an array of label values.
+* `...` label values.
 
 The number of label values should match the number of label names defined when
 the counter was registered using `prometheus:counter()`. No label values should
@@ -240,21 +240,21 @@ Example:
 ```
 log_by_lua '
   metric_bytes:inc(tonumber(ngx.var.request_length))
-  metric_requests:inc(1, {ngx.var.server_name, ngx.var.status})
+  metric_requests:inc(1, ngx.var.server_name, ngx.var.status)
 ';
 ```
 
 ### counter:del()
 
-**syntax:** counter:del(*label_values*)
+**syntax:** counter:del(...)
 
 Delete a previously registered counter. This is usually called when you don't
 need to observe such counter (or a metric with specific label values in this
-counter) any more. If this counter has labels, you have to pass `label_values`
+counter) any more. If this counter has labels, you have to pass `...`
 to delete the specific metric of this counter. If you want to delete all the
 metrics of a counter with labels, you should call `Counter:reset()`.
 
-* `label_values` is an array of label values.
+* `...` label values.
 
 The number of label values should match the number of label names defined when
 the counter was registered using `prometheus:counter()`. No label values should
