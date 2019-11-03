@@ -248,10 +248,10 @@ log_by_lua '
 
 **syntax:** counter:del(*label_values*)
 
-Delete a previously registered counter. This is usually called when you don't 
-need to observe such counter (or a metric with specific label values in this 
-counter) any more. If this counter has labels, you have to pass `label_values` 
-to delete the specific metric of this counter. If you want to delete all the 
+Delete a previously registered counter. This is usually called when you don't
+need to observe such counter (or a metric with specific label values in this
+counter) any more. If this counter has labels, you have to pass `label_values`
+to delete the specific metric of this counter. If you want to delete all the
 metrics of a counter with labels, you should call `Counter:reset()`.
 
 * `label_values` is an array of label values.
@@ -265,8 +265,8 @@ stripped from label values.
 
 **syntax:** counter:reset()
 
-Delete all metrics for a previously registered counter. If this counter have no 
-labels, it is just the same as `Counter:del()` function. If this counter have labels, 
+Delete all metrics for a previously registered counter. If this counter have no
+labels, it is just the same as `Counter:del()` function. If this counter have labels,
 it will delete all the metrics with different label values.
 
 ### gauge:set()
@@ -286,11 +286,11 @@ just before `prometheus::collect()` to return a real-time value.
 
 **syntax:** gauge:inc(*value*, *label_values*)
 
-Increments or decrements a previously registered gauge. This is usually called 
-when you want to observe the real-time value of a metric that can both be 
+Increments or decrements a previously registered gauge. This is usually called
+when you want to observe the real-time value of a metric that can both be
 increased and decreased.
 
-* `value` is a value that should be added to the gauge. It could be a negative 
+* `value` is a value that should be added to the gauge. It could be a negative
 value when you need to decrease the value of the gauge. Defaults to 1.
 * `label_values` is an array of label values.
 
@@ -303,10 +303,10 @@ stripped from label values.
 
 **syntax:** gauge:del(*label_values*)
 
-Delete a previously registered gauge. This is usually called when you don't 
-need to observe such gauge (or a metric with specific label values in this 
-gauge) any more. If this gauge has labels, you have to pass `label_values` 
-to delete the specific metric of this gauge. If you want to delete all the 
+Delete a previously registered gauge. This is usually called when you don't
+need to observe such gauge (or a metric with specific label values in this
+gauge) any more. If this gauge has labels, you have to pass `label_values`
+to delete the specific metric of this gauge. If you want to delete all the
 metrics of a gauge with labels, you should call `Gauge:reset()`.
 
 * `label_values` is an array of label values.
@@ -320,8 +320,8 @@ stripped from label values.
 
 **syntax:** gauge:reset()
 
-Delete all metrics for a previously registered gauge. If this gauge have no 
-labels, it is just the same as `Gauge:del()` function. If this gauge have labels, 
+Delete all metrics for a previously registered gauge. If this gauge have no
+labels, it is just the same as `Gauge:del()` function. If this gauge have labels,
 it will delete all the metrics with different label values.
 
 ### histogram:observe()
@@ -394,24 +394,9 @@ server {
 
 ## Development
 
-### Install dependencies for testing
-
-- `luarocks install luacheck`
-- `luarocks install luaunit`
-
 ### Run tests
 
-- `luacheck --globals ngx -- prometheus.lua`
-- `lua prometheus_test.lua`
-
-### Releasing new version
-
-- update version in the `dist.ini`
-- rename `.rockspec` file and update version inside it
-- commit changes
-- push to luarocks: `luarocks upload nginx-lua-prometheus-0.20181120-1.rockspec`
-- upload to OPM: `opm build && opm upload`
-- create a new Git tag: `git tag 0.XXXXXXXX-X && git push origin 0.XXXXXXXX-X`
+- `make test`
 
 ## Credits
 

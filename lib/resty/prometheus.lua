@@ -47,6 +47,16 @@ local math = math
 local string = string
 local ngx = ngx
 local table = table
+local tab_clear = require("table.clear")
+
+    local tab_tmp = {}
+local function init_tmp_tab(...)
+    tab_clear(tab_tmp)
+    for i = 1, select('#', ...) do
+        tab_tmp[i] = select(i, ...)
+    end
+    return tab_tmp
+end
 
 -- Default set of latency buckets, 5ms to 10s:
 local DEFAULT_BUCKETS = {0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.3,
