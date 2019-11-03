@@ -271,7 +271,7 @@ it will delete all the metrics with different label values.
 
 ### gauge:set()
 
-**syntax:** gauge:set(*value*, *label_values*)
+**syntax:** gauge:set(*value*, ...)
 
 Sets the current value of a previously registered gauge. This could be called
 from [log_by_lua](https://github.com/openresty/lua-nginx-module#log_by_lua)
@@ -280,11 +280,11 @@ globally or per server/location to modify a gauge on each request, or from
 just before `prometheus::collect()` to return a real-time value.
 
 * `value` is a value that the gauge should be set to. Required.
-* `label_values` is an array of label values.
+* `...` label values.
 
 ### gauge:inc()
 
-**syntax:** gauge:inc(*value*, *label_values*)
+**syntax:** gauge:inc(*value*, ...)
 
 Increments or decrements a previously registered gauge. This is usually called
 when you want to observe the real-time value of a metric that can both be
@@ -292,7 +292,7 @@ increased and decreased.
 
 * `value` is a value that should be added to the gauge. It could be a negative
 value when you need to decrease the value of the gauge. Defaults to 1.
-* `label_values` is an array of label values.
+* `...` label values.
 
 The number of label values should match the number of label names defined when
 the gauge was registered using `prometheus:gauge()`. No label values should
@@ -301,15 +301,15 @@ stripped from label values.
 
 ### gauge:del()
 
-**syntax:** gauge:del(*label_values*)
+**syntax:** gauge:del(...)
 
 Delete a previously registered gauge. This is usually called when you don't
 need to observe such gauge (or a metric with specific label values in this
-gauge) any more. If this gauge has labels, you have to pass `label_values`
+gauge) any more. If this gauge has labels, you have to pass `...`
 to delete the specific metric of this gauge. If you want to delete all the
 metrics of a gauge with labels, you should call `Gauge:reset()`.
 
-* `label_values` is an array of label values.
+* `...` label values.
 
 The number of label values should match the number of label names defined when
 the gauge was registered using `prometheus:gauge()`. No label values should

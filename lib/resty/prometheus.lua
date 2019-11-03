@@ -150,7 +150,8 @@ local Gauge = Metric:new()
 --   value: (number) a value to set the gauge to. Should be defined.
 --   label_values: an array of label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Gauge:set(value, label_values)
+function Gauge:set(value, ...)
+  local label_values = init_tmp_tab(...)
   if value == nil then
     self.prometheus:log_error("No value passed for " .. self.name)
     return
@@ -168,7 +169,8 @@ end
 -- Args:
 --   label_values: an array of label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Gauge:del(label_values)
+function Gauge:del(...)
+  local label_values = init_tmp_tab(...)
   local err = self:check_label_values(label_values)
   if err ~= nil then
     self.prometheus:log_error(err)
@@ -191,7 +193,8 @@ end
 --     need to decrease the value of the gauge). Defaults to 1 if skipped.
 --   label_values: an array of label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Gauge:inc(value, label_values)
+function Gauge:inc(value, ...)
+  local label_values = init_tmp_tab(...)
   local err = self:check_label_values(label_values)
   if err ~= nil then
     self.prometheus:log_error(err)
