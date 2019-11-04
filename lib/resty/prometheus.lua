@@ -103,7 +103,7 @@ local Counter = Metric:new()
 --
 -- Args:
 --   value: (number) a value to add to the counter. Defaults to 1 if skipped.
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
 function Counter:inc(value, ...)
   local label_values = init_tmp_tab(...)
@@ -124,7 +124,7 @@ end
 -- Delete a given counter
 --
 -- Args:
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
 function Counter:del(...)
   local label_values = init_tmp_tab(...)
@@ -148,7 +148,7 @@ local Gauge = Metric:new()
 --
 -- Args:
 --   value: (number) a value to set the gauge to. Should be defined.
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
 function Gauge:set(value, ...)
   local label_values = init_tmp_tab(...)
@@ -167,7 +167,7 @@ end
 -- Delete a given gauge
 --
 -- Args:
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
 function Gauge:del(...)
   local label_values = init_tmp_tab(...)
@@ -191,7 +191,7 @@ end
 -- Args:
 --   value: (number) a value to add to the gauge (a negative value when you
 --     need to decrease the value of the gauge). Defaults to 1 if skipped.
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
 function Gauge:inc(value, ...)
   local label_values = init_tmp_tab(...)
