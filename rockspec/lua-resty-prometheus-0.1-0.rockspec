@@ -1,22 +1,20 @@
--- Note, this file must have version in its name
--- (see https://github.com/knyar/nginx-lua-prometheus/issues/27)
-package = "iresty-nginx-lua-prometheus"
-version = "0.20190917-0"
+package = "lua-resty-prometheus"
+version = "0.1"
 
 source = {
-  url = "git://github.com/iresty/nginx-lua-prometheus.git",
-  tag = "0.20190917",
+  url = "git://github.com/iresty/lua-resty-prometheus.git",
+  tag = "v0.1",
 }
 
 description = {
-  summary = "Prometheus metric library for Nginx",
-  homepage = "https://github.com/iresty/nginx-lua-prometheus",
+  summary = "Prometheus metric library for OpenResty",
+  homepage = "https://github.com/iresty/lua-resty-prometheus",
   license = "MIT"
 }
 
 build = {
     type = "builtin",
     modules = {
-        ["nginx.prometheus"] = "prometheus.lua"
+        ["resty.prometheus"] = "lib/resty/prometheus.lua"
     }
 }

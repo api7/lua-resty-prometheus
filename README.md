@@ -1,5 +1,4 @@
-[![Build Status](https://secure.travis-ci.org/knyar/nginx-lua-prometheus.svg?branch=master)](http://travis-ci.org/knyar/nginx-lua-prometheus?branch=master)
-[![Coverage Status](https://coveralls.io/repos/github/knyar/nginx-lua-prometheus/badge.svg?branch=master)](https://coveralls.io/github/knyar/nginx-lua-prometheus?branch=master)
+[![Build Status](https://secure.travis-ci.org/iresty/lua-resty-prometheus.svg?branch=master)](http://travis-ci.org/iresty/lua-resty-prometheus?branch=master)
 
 # Prometheus metric library for Nginx
 
@@ -9,15 +8,13 @@ expose them on a separate web page to be pulled by
 
 ## Installation
 
-You need to install nginx package with lua support (`libnginx-mod-http-lua` on
-newer Debian versions, or `nginx-extras` on older ones). The library file,
+You need to install nginx package with lua support. The library file,
 `prometheus.lua`, needs to be available in `LUA_PATH`. If this is the only Lua
 library you use, you can just point `lua_package_path` to the directory with
 this git repo checked out (see example below).
 
-OpenResty users will find this library in [opm](https://opm.openresty.org/). It
-is also available via
-[luarocks](https://luarocks.org/modules/knyar/nginx-lua-prometheus).
+It is available via
+[luarocks](https://luarocks.org/modules/membphis/iresty-nginx-lua-prometheus).
 
 ## Quick start guide
 
@@ -27,9 +24,9 @@ of `nginx.conf`:
 
 ```
 lua_shared_dict prometheus_metrics 10M;
-lua_package_path "/path/to/nginx-lua-prometheus/?.lua";
+lua_package_path "/path/to/nginx-lua-prometheus/lib/?.lua";
 init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
   metric_requests = prometheus:counter(
     "nginx_http_requests_total", "Number of HTTP requests", {"host", "status"})
   metric_latency = prometheus:histogram(
@@ -92,7 +89,7 @@ to the beginning of `nginx.conf` to ensure the modules are loaded.
 
 ### init()
 
-**syntax:** require("prometheus").init(*dict_name*, [*prefix*])
+**syntax:** require("resty.prometheus").init(*dict_name*, [*prefix*])
 
 Initializes the module. This should be called once from the
 [init_by_lua](https://github.com/openresty/lua-nginx-module#init_by_lua)
@@ -108,7 +105,7 @@ Returns a `prometheus` object that should be used to register metrics.
 Example:
 ```
 init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
 ';
 ```
 
@@ -161,7 +158,7 @@ Returns a `gauge` object that can later be set.
 Example:
 ```
 init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
   metric_connections = prometheus:gauge(
     "nginx_http_connections", "Number of HTTP connections", {"state"})
 ';
@@ -187,7 +184,7 @@ Returns a `histogram` object that can later be used to record samples.
 Example:
 ```
 init_by_lua '
-  prometheus = require("prometheus").init("prometheus_metrics")
+  prometheus = require("resty.prometheus").init("prometheus_metrics")
   metric_latency = prometheus:histogram(
     "nginx_http_request_duration_seconds", "HTTP request latency", {"host"})
   metric_response_sizes = prometheus:histogram(
