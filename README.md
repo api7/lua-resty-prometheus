@@ -326,19 +326,19 @@ it will delete all the metrics with different label values.
 
 ### histogram:observe()
 
-**syntax:** histogram:observe(*value*, *label_values*)
+**syntax:** histogram:observe(*value*, ...)
 
 Records a value in a previously registered histogram. Usually called from
 [log_by_lua](https://github.com/openresty/lua-nginx-module#log_by_lua)
 globally or per server/location.
 
 * `value` is a value that should be recorded. Required.
-* `label_values` is an array of label values.
+* `...` label values.
 
 Example:
 ```
 log_by_lua '
-  metric_latency:observe(tonumber(ngx.var.request_time), {ngx.var.server_name})
+  metric_latency:observe(tonumber(ngx.var.request_time), ngx.var.server_name)
   metric_response_sizes:observe(tonumber(ngx.var.bytes_sent))
 ';
 ```

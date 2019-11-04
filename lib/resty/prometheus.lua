@@ -208,9 +208,10 @@ local Histogram = Metric:new()
 --
 -- Args:
 --   value: (number) a value to record. Should be defined.
---   label_values: an array of label values. Can be nil (i.e. not defined) for
+--   ...: an array of label values. Can be nil (i.e. not defined) for
 --     metrics that have no labels.
-function Histogram:observe(value, label_values)
+function Histogram:observe(value, ...)
+  local label_values = init_tmp_tab(...)
   if value == nil then
     self.prometheus:log_error("No value passed for " .. self.name)
     return
