@@ -29,12 +29,16 @@ function SimpleDict:incr(k, v, init)
   return self.dict[k], nil  -- newval, err
 end
 function SimpleDict:get(k)
+  -- simulate key not exist
+  if k == "gauge2{f2=\"key_not_exist\",f1=\"key_not_exist\"}" then
+    return nil, nil
+  end
   -- simulate an error
   if k == "gauge2{f2=\"dict_error\",f1=\"dict_error\"}" then
-    return nil, 0
+    return nil, "dict error"
   end
   if not self.dict then self.dict = {} end
-  return self.dict[k], 0  -- value, flags
+  return self.dict[k], nil  -- value, err
 end
 function SimpleDict:delete(k)
   self.dict[k] = nil
@@ -238,15 +242,25 @@ function TestPrometheus:testNumericLabelValues()
   luaunit.assertEquals(self.dict:get('l2_sum{var="-3",site="90000"}'), 1)
   luaunit.assertEquals(ngx.logs, nil)
 end
-function TestPrometheus:testNonPrintableLabelValues()
+function TestPrometheus:testMultibyteLabelValues()
   self.counter2:inc(1, {"foo", "baz\189\166qux"})
+  self.counter2:inc(1, {"bad1\195\195bad", "bad2\224\161\209bad"})
+  self.counter2:inc(1, {"bad3\240\144\129\192bad", "bad4\242\129\210bad"})
+  self.counter2:inc(1, {"¢€𤭢", "Pay in €. Thanks."})
   self.gauge2:set(1, {"z\001", "\002"})
+  self.gauge2:set(1, {"\224\143\175", "\237\129\128"})
   self.hist2:observe(1, {"\166omg", "fooшbar"})
+  self.hist2:observe(1, {"\244\143\143\143", "\244"})
 
   self.p._counter:sync()
-  luaunit.assertEquals(self.dict:get('metric2{f2="foo",f1="bazqux"}'), 1)
-  luaunit.assertEquals(self.dict:get('gauge2{f2="z",f1=""}'), 1)
-  luaunit.assertEquals(self.dict:get('l2_sum{var="omg",site="foobar"}'), 1)
+  luaunit.assertEquals(self.dict:get('metric2{f2="foo",f1="baz"}'), 1)
+  luaunit.assertEquals(self.dict:get('metric2{f2="bad1",f1="bad2"}'), 1)
+  luaunit.assertEquals(self.dict:get('metric2{f2="bad3",f1="bad4"}'), 1)
+  luaunit.assertEquals(self.dict:get('metric2{f2="¢€𤭢",f1="Pay in €. Thanks."}'), 1)
+  luaunit.assertEquals(self.dict:get('gauge2{f2="z\001",f1="\002"}'), 1)
+  luaunit.assertEquals(self.dict:get('gauge2{f2="",f1="\237\129\128"}'), 1)
+  luaunit.assertEquals(self.dict:get('l2_sum{var="",site="fooшbar"}'), 1)
+  luaunit.assertEquals(self.dict:get('l2_sum{var="\244\143\143\143",site=""}'), 1)
   luaunit.assertEquals(ngx.logs, nil)
 end
 function TestPrometheus:testNoValues()
@@ -409,6 +423,71 @@ function TestPrometheus:testReset()
   luaunit.assertEquals(self.dict:get('gauge2{f2="f2value",f1="f1value2"}'), nil)
   luaunit.assertEquals(self.dict:get("nginx_metric_errors_total"), 0)
   luaunit.assertEquals(self.dict:get("gauge1"), 3)
+  luaunit.assertEquals(self.dict:get("nginx_metric_errors_total"), 0)
+
+  self.hist1:observe(0.35)
+  self.hist1:observe(0.4)
+  self.hist2:observe(0.001, {"ok", "site1"})
+  self.hist2:observe(0.15, {"ok", "site1"})
+
+  self.p._counter:sync()
+  luaunit.assertEquals(self.dict:get("metric1"), 4)
+  luaunit.assertEquals(self.dict:get("gauge1"), 3)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="00.300"}'), nil)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="00.400"}'), 2)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="00.500"}'), 2)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="Inf"}'), 2)
+  luaunit.assertEquals(self.dict:get('l1_count'), 2)
+  luaunit.assertEquals(self.dict:get('l1_sum'), 0.75)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="00.005"}'), 1)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="00.100"}'), 1)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="00.200"}'), 2)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="Inf"}'), 2)
+  luaunit.assertEquals(self.dict:get('l2_count{var="ok",site="site1"}'), 2)
+  luaunit.assertEquals(self.dict:get('l2_sum{var="ok",site="site1"}'), 0.151)
+  luaunit.assertEquals(self.dict:get("nginx_metric_errors_total"), 0)
+
+  self.hist1:reset()
+  self.p.key_index:sync()
+  luaunit.assertEquals(self.dict:get("metric1"), 4)
+  luaunit.assertEquals(self.dict:get("gauge1"), 3)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="00.400"}'), nil)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="00.500"}'), nil)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="Inf"}'), nil)
+  luaunit.assertEquals(self.dict:get('l1_count'), nil)
+  luaunit.assertEquals(self.dict:get('l1_sum'), nil)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="00.005"}'), 1)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="00.100"}'), 1)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="00.200"}'), 2)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="Inf"}'), 2)
+  luaunit.assertEquals(self.dict:get('l2_count{var="ok",site="site1"}'), 2)
+  luaunit.assertEquals(self.dict:get('l2_sum{var="ok",site="site1"}'), 0.151)
+  luaunit.assertEquals(self.dict:get("nginx_metric_errors_total"), 0)
+
+  self.hist1:observe(0.35)
+  self.p._counter:sync()
+  self.hist2:reset()
+  self.p.key_index:sync()
+  luaunit.assertEquals(self.dict:get("metric1"), 4)
+  luaunit.assertEquals(self.dict:get("gauge1"), 3)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="00.400"}'), 1)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="00.500"}'), 1)
+  luaunit.assertEquals(self.dict:get('l1_bucket{le="Inf"}'), 1)
+  luaunit.assertEquals(self.dict:get('l1_count'), 1)
+  luaunit.assertEquals(self.dict:get('l1_sum'), 0.35)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="00.005"}'), nil)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="00.100"}'), nil)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="00.200"}'), nil)
+  luaunit.assertEquals(self.dict:get('l2_bucket{var="ok",site="site1",le="Inf"}'), nil)
+  luaunit.assertEquals(self.dict:get('l2_count{var="ok",site="site1"}'), nil)
+  luaunit.assertEquals(self.dict:get('l2_sum{var="ok",site="site1"}'), nil)
+  luaunit.assertEquals(self.dict:get("nginx_metric_errors_total"), 0)
+
+  -- key not exist
+  self.gauge2:inc(4, {"key_not_exist", "key_not_exist"})
+  self.gauge2:reset()
+  self.p.key_index:sync()
+  luaunit.assertEquals(self.dict:get('gauge2{f2="key_not_exist",f1="key_not_exist"}'), nil)
   luaunit.assertEquals(self.dict:get("nginx_metric_errors_total"), 0)
 
   -- error get from dict

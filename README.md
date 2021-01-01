@@ -349,6 +349,15 @@ log_by_lua_block {
 }
 ```
 
+### histogram:reset()
+
+**syntax:** histogram:reset()
+
+Delete all metrics for a previously registered histogram.
+
+This function will wait for `sync_interval` before deleting the metrics to
+allow all workers to sync their counters.
+
 ### Built-in metrics
 
 The module increments an error metric called `nginx_metric_errors_total`
@@ -402,6 +411,19 @@ This module expects the
 [lua_code_cache](https://github.com/openresty/lua-nginx-module#lua_code_cache)
 option to be `on` (which is the default).
 
+### Try using an older version of the library
+
+If you are seeing library initialization errors, followed by errors for each
+metric change request (e.g. *attempt to index global '...' (a nil value)*),
+you are probably using an old version of lua-nginx-module. For example, this
+will happen if you try using the latest version of this library with the
+`nginx-extras` package shipped with Ubuntu 16.04.
+
+If you cannot upgrade nginx and lua-nginx-module, you can try using an older
+version of this library; it will not have the latest performance optimizations,
+but will still be functional. The recommended older release to use is
+[0.20181120](https://github.com/knyar/nginx-lua-prometheus/tree/0.20181120).
+
 ## Development
 
 ### Install dependencies for testing
@@ -417,12 +439,13 @@ option to be `on` (which is the default).
 
 ### Releasing new version
 
+- update CHANGELOG.md
 - update version in the `dist.ini`
 - rename `.rockspec` file and update version inside it
 - commit changes
+- create a new Git tag: `git tag 0.XXXXXXXX && git push origin 0.XXXXXXXX`
 - push to luarocks: `luarocks upload nginx-lua-prometheus-0.20181120-1.rockspec`
 - upload to OPM: `opm build && opm upload`
-- create a new Git tag: `git tag 0.XXXXXXXX-X && git push origin 0.XXXXXXXX-X`
 
 ## Credits
 

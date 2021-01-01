@@ -76,12 +76,79 @@ local DEFAULT_BUCKETS = {0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.3,
 -- Prefix for internal shared dictionary items.
 local KEY_INDEX_PREFIX = "__ngx_prom__"
 
+-- Accepted range of byte values for tailing bytes of utf8 strings.
+-- This is defined outside of the validate_utf8_string function as a const
+-- variable to avoid creating and destroying table frequently.
+-- Values in this table (and in validate_utf8_string) are from table 3-7 of
+-- www.unicode.org/versions/Unicode6.2.0/UnicodeStandard-6.2.pdf
+local accept_range = {
+  {lo = 0x80, hi = 0xBF},
+  {lo = 0xA0, hi = 0xBF},
+  {lo = 0x80, hi = 0x9F},
+  {lo = 0x90, hi = 0xBF},
+  {lo = 0x80, hi = 0x8F}
+}
+
+-- Validate utf8 string for label values.
+--
+-- Args:
+--   str: string
+--
+-- Returns:
+--   (bool) whether the input string is a valid utf8 string.
+--   (number) position of the first invalid byte.
+local function validate_utf8_string(str)
+  local i, n = 1, #str
+  local first, byte, left_size, range_idx
+  while i <= n do
+    first = string.byte(str, i)
+    if first >= 0x80 then
+      range_idx = 1
+      if first >= 0xC2 and first <= 0xDF then -- 2 bytes
+        left_size = 1
+      elseif first >= 0xE0 and first <= 0xEF then -- 3 bytes
+        left_size = 2
+        if first == 0xE0 then
+          range_idx = 2
+        elseif first == 0xED then
+          range_idx = 3
+        end
+      elseif first >= 0xF0 and first <= 0xF4 then -- 4 bytes
+        left_size = 3
+        if first == 0xF0 then
+          range_idx = 4
+        elseif first == 0xF4 then
+          range_idx = 5
+        end
+      else
+        return false, i
+      end
+
+      if i + left_size > n then
+        return false, i
+      end
+
+      for j = 1, left_size do
+        byte = string.byte(str, i + j)
+        if byte < accept_range[range_idx].lo or byte > accept_range[range_idx].hi then
+          return false, i
+        end
+        range_idx = 1
+      end
+      i = i + left_size
+    end
+    i = i + 1
+  end
+  return true
+end
+
 -- Generate full metric name that includes all labels.
 --
 -- Args:
 --   name: string
 --   label_names: (array) a list of label keys.
 --   label_values: (array) a list of label values.
+--
 -- Returns:
 --   (string) full metric name.
 local function full_metric_name(name, label_names, label_values)
@@ -90,10 +157,21 @@ local function full_metric_name(name, label_names, label_values)
   end
   local label_parts = {}
   for idx, key in ipairs(label_names) do
-    local label_value = (string.format("%s", label_values[idx])
-      :gsub("[^\032-\126]", "")  -- strip non-printable characters
-      :gsub("\\", "\\\\")
-      :gsub('"', '\\"'))
+    local label_value
+    if type(label_values[idx]) == "string" then
+      local valid, pos = validate_utf8_string(label_values[idx])
+      if not valid then
+        label_value = string.sub(label_values[idx], 1, pos - 1)
+                        :gsub("\\", "\\\\")
+                        :gsub('"', '\\"')
+      else
+        label_value = label_values[idx]
+                        :gsub("\\", "\\\\")
+                        :gsub('"', '\\"')
+      end
+    else
+      label_value = tostring(label_values[idx])
+    end
     table.insert(label_parts, key .. '="' .. label_value .. '"')
   end
   return name .. "{" .. table.concat(label_parts, ",") .. "}"
@@ -437,7 +515,7 @@ local function observe(self, value, label_values)
   c:incr(keys[self.bucket_count+3], 1)
 end
 
--- Delete all metrics for a given gauge or a counter.
+-- Delete all metrics for a given gauge, counter or a histogram.
 --
 -- This is like `del`, but will delete all time series for all previously
 -- recorded label values.
@@ -455,14 +533,37 @@ local function reset(self)
   end
 
   local keys = self._key_index:list()
-  local name_prefix = self.name .. "{"
-  local name_prefix_length = #name_prefix
+  local name_prefixes = {}
+  local name_prefix_length_base = #self.name
+  if self.typ == TYPE_HISTOGRAM then
+    if self.label_count == 0 then
+      name_prefixes[self.name .. "_count"] = name_prefix_length_base + 6
+      name_prefixes[self.name .. "_sum"] = name_prefix_length_base + 4
+    else
+      name_prefixes[self.name .. "_count{"] = name_prefix_length_base + 7
+      name_prefixes[self.name .. "_sum{"] = name_prefix_length_base + 5
+    end
+    name_prefixes[self.name .. "_bucket{"] = name_prefix_length_base + 8
+  else
+    name_prefixes[self.name .. "{"] = name_prefix_length_base + 1
+  end
 
   for _, key in ipairs(keys) do
     local value, key_err = self._dict:get(key)
     if value then
-      -- without labels equal, or with labels and the part before { equals
-      if key == self.name or name_prefix == string.sub(key, 1, name_prefix_length) then
+      -- For a metric to be deleted its name should either match exactly, or
+      -- have a prefix listed in `name_prefixes` (which ensures deletion of
+      -- metrics with label values).
+      local remove = key == self.name
+      if not remove then
+        for name_prefix, name_prefix_length in pairs(name_prefixes) do
+          if name_prefix == string.sub(key, 1, name_prefix_length) then
+            remove = true
+            break
+          end
+        end
+      end
+      if remove then
         self._key_index:remove(key)
         local _, err = self._dict:safe_set(key, nil)
         if err then
@@ -470,7 +571,9 @@ local function reset(self)
         end
       end
     else
-      self._log_error("Error getting '", key, "': ", key_err)
+      if type(key_err) == "string" then
+        self._log_error("Error getting '", key, "': ", key_err)
+      end
     end
   end
 
@@ -628,6 +731,7 @@ local function register(self, name, help, label_names, buckets, typ)
     _log_error_kv = function(...) self:log_error_kv(...) end,
     _key_index = self.key_index,
     _dict = self.dict,
+    reset = reset,
   }
   if typ < TYPE_HISTOGRAM then
     if typ == TYPE_GAUGE then
@@ -636,7 +740,6 @@ local function register(self, name, help, label_names, buckets, typ)
     else
       metric.inc = inc_counter
     end
-    metric.reset = reset
     metric.del = del
   else
     metric.observe = observe
